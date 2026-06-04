@@ -144,8 +144,7 @@ TEST_F(AlgorithmTest, Algorithm3xBF16) {
         algorithm=dot_bf16_bf16_f32_x3
     }
   )";
-  EXPECT_TRUE(
-      RunAndCompare(kHloText, ErrorSpec{/*aabs=*/0.001, /*arel=*/0.001}));
+  EXPECT_TRUE(RunAndCompare(kHloText, ErrorSpec{/*aabs=*/1e-3, /*arel=*/1e-3}));
 }
 
 TEST_F(AlgorithmTest, Algorithm6xBF16) {
@@ -164,8 +163,7 @@ TEST_F(AlgorithmTest, Algorithm6xBF16) {
         algorithm=dot_bf16_bf16_f32_x6
     }
   )";
-  EXPECT_TRUE(
-      RunAndCompare(kHloText, ErrorSpec{/*aabs=*/0.001, /*arel=*/0.001}));
+  EXPECT_TRUE(RunAndCompare(kHloText, ErrorSpec{/*aabs=*/1e-3, /*arel=*/1e-3}));
 }
 
 TEST_F(BlasAlgorithmTest, Algorithm_BF16_BF16_F32) {
@@ -1051,7 +1049,8 @@ class NumericTestsForBlas : public BlasAlgorithmTest,
       p1 = f32[8,8] parameter(1)
       ROOT dot = f32[8,8] dot(p0, p1),
         lhs_contracting_dims={1},
-        rhs_contracting_dims={0}
+        rhs_contracting_dims={0},
+        algorithm=dot_f32_f32_f32
     }
   )";
 
@@ -1067,7 +1066,8 @@ class NumericTestsForBlas : public BlasAlgorithmTest,
     config.set_replica_count(1);
     config.set_num_partitions(1);
 
-    auto optimized_module = GetOptimizedModule(kReferenceHloText, config);
+    auto optimized_module = GetOptimizedModule(
+        absl::StrFormat(kReferenceHloText, HloModuleTestName()), config);
     CHECK_OK(optimized_module.status());
     return std::move(optimized_module.value());
   }
@@ -1587,10 +1587,10 @@ TEST_P(TritonAndBlasSupportForDifferentTensorSizes,
       break;
     case PC::ALG_DOT_BF16_BF16_F32_X6:
     case PC::ALG_DOT_BF16_BF16_F32_X9:
-        ASSERT_TRUE(result_or_status.status().ok())
-            << "failed to compile " << algorithm_;
-        EXPECT_TRUE(result_or_status.value())
-            << "wrong result for " << algorithm_;
+      ASSERT_TRUE(result_or_status.status().ok())
+          << "failed to compile " << algorithm_;
+      EXPECT_TRUE(result_or_status.value())
+          << "wrong result for " << algorithm_;
       break;
     case PC::ALG_DOT_F64_F64_F64:
       EXPECT_EQ(result_or_status.status().code(),
